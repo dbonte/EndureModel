@@ -1,5 +1,5 @@
 # EndureModel
-Documented code of the mechanistic model developed in the 2Seas Endure project. Supplementary material for manuscript 'Biomorphogenic feedbacks and the spatial organisation of a dominant grass steer dune development' by Dries Bonte1*, Femke Batsleer1, Sebastian Dan², Jasmijn Hillaert1,³, Hans Matheve1, Sam Provoost³, Pieter Rauwoens4, Valérie Reijers5, Glenn Strypsteen4, Suzuki Tomohiro², Martijn Vandegehuchte1, Ruben Van de Walle1, Toon Verwaest²
+Documented code of the mechanistic model developed in the 2Seas Endure project. Supplementary material for manuscript 'Biomorphogenic feedbacks and the spatial organisation of a dominant grass steer dune development' by Dries Bonte, Femke Batsleer, Sebastian Dan, Jasmijn Hillaert, Hans Matheve, Sam Provoost, Pieter Rauwoens, Valérie Reijers, Glenn Strypsteen, Suzuki Tomohiro, Martijn Vandegehuchte, Ruben Van de Walle, Toon Verwaest
 
 
 1.	Ghent University, Dept. Biology, K.L. Ledeganckstraat 35, B-9000 Gent, Belgium
