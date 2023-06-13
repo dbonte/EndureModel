@@ -1,41 +1,21 @@
-﻿# -*- coding: utf-8 -*-
-"""
-Created on Thu Feb 28 09:47:08 2019
-
-@author: jrhillae
-"""
-
 # -*- coding: utf-8 -*-
 """
 Created on Fri Jan 25 13:40:18 2019
-
 @author: jrhillae
-@author: dbonte - reading input marram from neutral landscapes (28/11/19)
+@author: dbonte - reading input marram from neutral landscapes
                 - changes in lateral growth
-                - initialisation phase of 3years (1095 days): allowing sand profile around existing vegetation
-                - growth for another 15 y 
-                - disturbance 2y before end of 20y simulations
-                - storm event: some diaspores remain for subsequent vegetation development
-
-
+                - initialisation phase of 3 years (1095 days): allowing sand profile around existing vegetation
+                - growth for another 17 y
 """
-from mpl_toolkits.mplot3d import axes3d
 import numpy as np
 import random as rnd
-import matplotlib.animation as animation
-from matplotlib import cm
-import matplotlib.pyplot as plt
 import math
 import pandas as pd
 from nlmpy import nlmpy 
-import time
-
-
-
-                                                     
+                              
 class Sand:
     
-    #intialisatie
+    #intialisation
     def __init__(self,
                  max_x,
                  max_y,
@@ -43,7 +23,6 @@ class Sand:
                  sand_bulk_density,
                  length_cell):
         """Initializing class sand"""
-        #numbers
         #boundary condition
         self.sandflux=sandflux
         #sand_bulk_density
@@ -51,7 +30,7 @@ class Sand:
         
         #cumulative outflux of sand per day
         self.outflux=0
-        #tracing cumulative outflux of sand per year at the landside (S)- sea is positioned North (N)
+        #tracing cumulative outflux of sand per year at the landside (S) - sea is positioned North (N)
         self.outflux_landside=0
         #trace most recent average outflux (per cell) at lateral side=> input flux at a lateral side in the future, initial influx 0
         self.outflux_lateral=0  
@@ -87,36 +66,22 @@ class Sand:
         #tracing total amount of sand deposited during winter per cell
         self.change_sand_winter=np.zeros((max_x, max_y))
         
-                
 class Ammophila:
     "Initializing class marram grass"
     def __init__(self, max_x, max_y, max_height, P, H, n):        
         self.Density = np.zeros((max_x,max_y))
         #Each cell has a chance P to be occupied with marram grass at the start of the simulation
-        # clustered environment with 25% having resources
         
         #procedure to get the P correct
         n1=1  #at least one tussock of marram
         n0=n1*(1-P)/P
 
         nlm = nlmpy.mpd(nRow=max_y, nCol=max_x, h=H)
-        ##print('nlm',nlm)
-        self.Density = 20 * (nlmpy.classifyArray(nlm, [n0,n1]))   ##number zeros on ones; 
+        self.Density = 20 * (nlmpy.classifyArray(nlm, [n0,n1]))   #number zeros on ones
         
+        #save and export vegetation occurence map
         nlmpy.exportASCIIGrid("grid"+str(P)+"_"+str(H)+"_"+str(n)+".txt", self.Density/20)
         
- #save initial density for joint count stats cfr field work       
-        '''title='P'+str(P*100)+'H'+str(H*100)+'.txt'
-        file=open(title, 'w')   
-        file.write(self.Density)
-        file.close() '''
-        
-        
-        ##print('marram', self.Density)
-        '''for x in range(max_x):
-           for y in range (max_y):
-                if rnd.random()<P:        
-                    self.Density[x,y]+=20'''
         #define array to calculate growth speed per location 
         self.Growthspeed=np.zeros((max_x,max_y))
         #array necessary for lateral growth    
@@ -145,7 +110,7 @@ class Dune_dynamics:
                  storm,
                  rain,
                  timesteps,
-                 output_name,movie):
+                 output_name):
         '''Initialization and regulation of dune dynamics'''             
         print('start')
         #attributes of class dune dynamics
@@ -164,41 +129,14 @@ class Dune_dynamics:
         self.direction_wind='N'
         self.distribution_winds=dist_winds
         self.length_cell=length_cell
-        self.movie=movie
-        #print(self.sand.Mass)
-        
-        '''first=time.time()
-        
-        #defining output
-        #2D output
-        ims=[]
-        fig1 = plt.figure()        
-        ax1=fig1.add_subplot(1,2,1)
-        ax2=fig1.add_subplot(1,2,2)
-        
-        #3D output
-        ims2=[]
-        fig2 = plt.figure()
-        ax = fig2.gca(projection='3d')
-        ax.set_zlim(0, 10)
-        X = np.arange(0, max_x, 1)
-        Y = np.arange(0, max_y, 1)
-        X,Y= np.meshgrid(X,Y)'''
         
         #Debugging file
         title='Debugging'+'output_name'+'.txt'
-        output=open(title, 'w')     
-        
-        #Initiating data collection for pandas dataframe
-        '''data={"P":[], "H":[], "Replicate":[], "Time":[],
-                  "Max_hoogte_zand":[],
-                  "Tot_density_marram":[],
-                  "Cumulative_outflux_per_year":[],
-                  "Total_dune_volume":[]}'''
+        output=open(title, 'w')
             
         #Running the simulation
         for t in range(timesteps):
-            print('Time', t)
+            print('Time ', t, '/', timesteps, sep="")
             
             #1: determine wind velocity
             self.determine_wind_velocity(mean_wind_velocity,
@@ -246,9 +184,8 @@ class Dune_dynamics:
             if t%365<153:                  
                 self.LocalGrowth()
             
-            #NEW VERSION
-            #hereunder if statement to allow lateral growth only after t*01,i.e. after 3y initialisation 
-                if t>timesteps*0.15:
+                #hereunder if statement to allow lateral growth only after 3y initialisation 
+                if t>3*365:
                     self.Growth_across_cells(output, t)
                 
             #autumn and winter: submersion
@@ -261,64 +198,23 @@ class Dune_dynamics:
             self.First_row_zero()
            
             #At the end of a day, regulate output 
-            #1) movies: in total each movie consists of 100 frames    
-            
-            
-            '''##2D frames
-            if t%(timesteps/100)==0:
-                ima=ax1.imshow(self.ammophila.Density, animated=True,
-                               cmap='Greens', interpolation='none', origin="upper")
-                imb=ax2.imshow(self.sand.Mass, animated=True,
-                               cmap='YlOrBr', interpolation='none', origin="upper")
-                ims.append([ima, imb])
-            ##3D frames
-            if t%(timesteps/100)==0:
-                
-                imc=ax.plot_surface(X, Y, self.sand.Mass/(self.sand.sand_bd*(self.length_cell**2)), cmap=cm.YlOrBr,
-                       linewidth=0, antialiased=False)
-                #imc=ax.plot_wireframe(X, Y, self.sand.Mass/(self.sand_bd*(self.length_cell**2)), rstride=5, cstride=5)
-                ims2.append([imc])
-            
-            '''
-            #2) arrays and output parameters are saved each year
+            #arrays and output parameters are saved each year
             if t%365==0:
-                #print('yes')
                 data["P"].append(P)
                 data["H"].append(H)
                 data["Replicate"].append(n)
                 data["Time"].append(t)
-                data["Max_hoogte_zand"].append(np.max(self.sand.Mass))
+                data["Max_dune_height"].append(np.max(self.sand.Mass/(self.sand.sand_bd*self.length_cell**2)))
                 data["Tot_density_marram"].append(np.sum(self.ammophila.Density))
                 data["Cumulative_outflux_per_year"].append(self.sand.outflux_landside)
-                data["Total_dune_volume"].append(np.sum(self.sand.Mass/(self.sand.sand_bd*self.length_cell**2)))#kg
-                '''np.save('Topography'+str(t)+'.npy', self.sand.Mass/(self.sand.sand_bd*self.length_cell**2))
-                np.save('Marram'+str(t)+'.npy', self.ammophila.Density) '''
+                data["Total_dune_volume"].append(np.sum(self.sand.Mass/self.sand.sand_bd))
                 
-                #print(data)
                 #set self.sand.outflux_landside back to zero before the start of the next year
                 self.sand.outflux_landside=0
             
         #save and export pandas dataframe
         df=pd.DataFrame.from_dict(data)
         df.to_csv('dataframe'+str(output_name)+'.csv')
-        #exporting array as dataframe:
-        #pd.DataFrame.from_records(x)
-        #now exporting array as array
-        '''np.save('Sand'+str(output_name)+'.npy', self.sand.Mass)
-        np.save('Marram'+str(output_name)+'.npy', self.ammophila.Density)
-        #create and save 2D and 3D animation  
-        
-        
-        if movie:  
-            ani1 = animation.ArtistAnimation(fig2, ims2, interval=200, blit=False, repeat_delay=1000) 
-            ani2 = animation.ArtistAnimation(fig1, ims, interval=200, blit=False, repeat_delay=1000)
-            ani1.save('3D'+str(output_name)+'.mp4',  writer='ffmpeg', dpi=200)
-            ani2.save('2D'+str(output_name)+'.mp4',  writer='ffmpeg', dpi=200)
-        output.close()
-        delta=time.time()-first
-        print('time of simulation:',delta)
-        
-        plt.show()'''
         
     def determine_wind_velocity(self,
                                 mean_wind_velocity,
@@ -334,10 +230,9 @@ class Dune_dynamics:
         '''Implementing storm event within the first quarter rows of the landscape'''
         for y in range (self.max_y):
             for x in range (int(self.max_x/4)):
-                if self.ammophila.Density[x,y]==0: self.sand.Mass[x,y]=0  #***without vegation all sand is eroded
+                if self.ammophila.Density[x,y]==0: self.sand.Mass[x,y]=0  #without vegation all sand is eroded
                 
-                else: 
-                #***new version to reduce ammophila density; roots remain present 
+                else:  
                 #if storm then 5% of sand remains and 5% of vegetaion
                     self.ammophila.Density[x,y]=self.ammophila.Density[x,y]*0.01
                     self.sand.Mass[x,y]=self.sand.Mass[x,y]*0.05
@@ -421,7 +316,6 @@ class Dune_dynamics:
             
         Winds=['N', 'W', 'S', 'E']
         
-        
         #index future wind
         ind_fw=Winds.index(Future_wind)
         
@@ -432,8 +326,8 @@ class Dune_dynamics:
             self.sand.time_too_much_deposition=np.rot90(self.sand.time_too_much_deposition, ind_fw)
             self.sand.change_sand_winter=np.rot90(self.sand.change_sand_winter, ind_fw)
             self.ammophila.density_before_winter=np.rot90(self.ammophila.density_before_winter, ind_fw)
-            
-        self.direction_wind=Future_wind   
+        
+        self.direction_wind=Future_wind
         
     def wind_north(self):
         '''Put landscape back in original position with wind direction North'''
@@ -455,19 +349,18 @@ class Dune_dynamics:
     def define_shelter(self, output):
         '''Determine position of shelters in landscape
         Updating shelter array, shelter: 1 , no shelter: 0 '''
-        #step 1: fill the array with zeros
+        #1: fill the array with zeros
         self.sand.shelter.fill(0)   
         
-        #step 2: define height per cell (based on vegetation and sand)
-        height_sand=(self.sand.Mass/(self.sand.sand_bd*self.length_cell**2)) #m
-        height_vegetation= ((np.sqrt(self.ammophila.Density/100))*self.ammophila.max_height)#m
-        Tot_height= height_sand + height_vegetation #m
+        #2: define height per cell (based on vegetation and sand)
+        height_sand=(self.sand.Mass/(self.sand.sand_bd*self.length_cell**2))
+        height_vegetation= ((np.sqrt(self.ammophila.Density/100))*self.ammophila.max_height)
+        Tot_height= height_sand + height_vegetation
         
-        ##print('Tot_height', Tot_height)
-        #step 3, determine slope per location and total length of slope
+        #3: determine slope per location and total length of slope
         slope, length_of_slope= self.define_slope(Tot_height)
         
-        #step 4, determine shelter areas
+        #4: determine shelter areas
         for y in range(self.max_y):
             #per negative slope, the shelter is only determined once (in the first cell of the slope)
             Neg_slope=False
@@ -476,12 +369,9 @@ class Dune_dynamics:
                 if (slope[x,y]< math.tan(math.radians(-14))) and Neg_slope==False:
                     #calculate lenght of the shelter
                     shelter_length=((slope[x,y]*(length_of_slope[x,y]*self.length_cell))/math.tan(math.radians(-14)))/self.length_cell
-                    #print(shelter_length)
                     #loop over each cell in the shelter and change shelter array to 1 
                     #loop stops when the height of a cell exceeds the height of the shelter (considering the shelter is a triangle)
                     q=x
-                    #print(int(x+length_of_slope[x,y])-1)
-                    #print( q, x+shelter_length, math.tan(math.radians(14))*((shelter_length-(q-x))*0.20))
                     #shelter_length is float, therefore ceil is applied
                     while (q<self.max_x) and (q<math.ceil(x+shelter_length)) and \
                     (height_sand[q,y]<(math.tan(math.radians(14))*((shelter_length-(q-x))*self.length_cell)) +\
@@ -491,18 +381,15 @@ class Dune_dynamics:
                     Neg_slope=True  
                 
                 if (slope[x,y]>0) or (slope[x,y]==0):
-                    Neg_slope=False  
-                 
-        
-    def Sand_dynamics(self, 
-                      t,
-                      output):
+                    Neg_slope=False
+                    
+    def Sand_dynamics(self, t, output):
         '''Implement sand dynamics'''
         self.sand.change_sand.fill(0)
         self.sand.outflux=0
         #a wind velocity of 3.87 m/s at a height of 10m is the threshold for sand dynamics
         if self.wind_velocity>3.87:
-            #First, calculate shear velocity, shear stress and qs per location in grid
+            #1: calculate shear velocity, shear stress and qs per location in grid
             #general rule: shear_velocity=sqrt(shear_stress/sigma_a)
             shear_stress_max=((self.wind_velocity*0.058)**2) *1.25
             
@@ -560,15 +447,18 @@ class Dune_dynamics:
             
             #define boundary condition at windward side,
             #expressed relative to qmax (percentage determined by parameter self.sand.sandflux)
-            
             if self.direction_wind=='N':
                 flux_firstcell= min(10, self.sand.sandflux*(1.8* (1.25/9.81)*math.sqrt(335/250)*\
                                                 ((self.wind_velocity-3.87)*0.058)**3)*3600*24*self.length_cell)
-            elif self.direction_wind=='E' or self.direction_wind=='W':
+            elif (self.direction_wind=='E' or self.direction_wind=='W') and self.sand.outflux_lateral!=0:
                 flux_firstcell= self.sand.outflux_lateral
-            else: flux_firstcell=0
+            else: 
+                #initiate sandflux from lateral winds at first occurence (self.sand.outflux_lateral==0) as 1% of qmax
+                #and southern winds always as 1% of qmax
+                flux_firstcell= min(10, 0.01*(1.8*(1.25/9.81)*math.sqrt(335/250)*\
+                                              ((self.wind_velocity-3.87)*0.058)**3)*3600*24*self.length_cell)
             
-            #Second, calculate growth speed of sand dynamics (i.e. 1/lsat) per location
+            #2: calculate growth speed of sand dynamics (i.e. 1/lsat) per location
             self.sand.growthspeed=0.2*self.sand.shear_velocity
                     
             for y in range(self.max_y):            
@@ -601,7 +491,6 @@ class Dune_dynamics:
         '''Implement avalanches by gravity'''
         avalanches=np.zeros((self.max_x, self.max_y))
         
-    
         directions=[(1,0),(0,1),(1,1),(-1,0),(0,-1),(-1,1),(1,-1),(-1,-1)]
         #Daily, shuffle items witin directions
         rnd.shuffle(directions)
@@ -638,16 +527,16 @@ class Dune_dynamics:
                 #implementing movement of sand by avalanche
                 if avalanche != False:
                     v,w=direction_avalanche
-                    amount_sand=((self.sand.Mass[x,y]/(self.sand.sand_bd*self.length_cell**2))-\
-                                  ((self.sand.Mass[x+v, y+w]/(self.sand.sand_bd*self.length_cell**2)+\
-                                    math.tan(math.radians(max_slope[x,y]))*math.sqrt((v*self.length_cell)**2+(w*self.length_cell)**2))))*\
-                                    (self.sand.sand_bd*self.length_cell**2)
+                    # displaced sand=(peak height - neighbours height - tolerance)*0.5
+                    amount_sand=(self.sand.Mass[x,y]/(self.sand.sand_bd*self.length_cell**2)-\
+                                 self.sand.Mass[x+v,y+w]/(self.sand.sand_bd*self.length_cell**2)-\
+                                 (math.tan(math.radians(max_slope[x,y]))*math.sqrt((v*self.length_cell)**2+(w*self.length_cell)**2)))*\
+                                 0.5*(self.sand.sand_bd*self.length_cell**2)
                     
                     #avalanche
                     avalanches[x,y]-=amount_sand
                     avalanches[x+v, y+w]+=amount_sand
-                  
-        
+                    
         #after implementing sand and gravity dynamics        
         #update array time_no_deposition, + 1 when no deposition, otherwise 0
         self.sand.Mass+= avalanches
@@ -675,7 +564,7 @@ class Dune_dynamics:
         #if change in sand negative during winter, density of marram grass does not change
         self.ammophila.Density= np.where((self.sand.change_sand_winter/(self.sand.sand_bd*self.length_cell**2))<0,
                                          self.ammophila.density_before_winter, self.ammophila.Density)
-             
+        
     def LocalGrowth(self):
         '''Regulate local growth of marram grass'''
         #determining local growth speed based on sand deposition
@@ -696,33 +585,26 @@ class Dune_dynamics:
         #0.00001 is the cut off value for presence of ammophila
         self.ammophila.Density[self.ammophila.Density<0.00001]=0
         
-      
     def Growth_across_cells(self, output, t):
         '''Regulate lateral growth'''
         self.ammophila.new.fill(0)
         #calculate chance of lateral growth, depending on sand deposition
-        #***new version with chance of lateral growth indepednent of sand flux
                         
         chance_lateral_growth=-14440*(self.sand.change_sand/(self.sand.sand_bd*self.length_cell**2)\
                                        -(0.4/152))**2+0.1
         
-                                       
         randomness=np.random.normal(0, 0.005, (self.max_x, self.max_y))
         
-        
         chance_lateral_growth= np.where(self.ammophila.Density>0, chance_lateral_growth + randomness, 0)
-        
-                
-        #print('chance_lateral_growth', chance_lateral_growth)
+
         for x in range(self.max_x):
             for y in range(self.max_y):
                 #determining whether cell will sprout
                 
-                #*** NEW VERSION make a 0.25% chance anyway if density is high (set to 80* fill)
+                #make a 0.25% chance anyway if density is high (set to 80% fill)
                 if (rnd.random()<0.0025) and (self.ammophila.Density[x,y]>80): chance_lateral_growth[x,y]=1
                 
                 if rnd.random()<chance_lateral_growth[x,y]: 
-                    #assert self.ammophila.Density[x,y]>0, print(chance_lateral_growth[x,y], self.ammophila.Density[x,y])
                     #Where will cell sprout?: 10% chance of sprouting 3 cells away  - levy walk
                     if rnd.random()<0.1:
                         a,b=rnd.choice([(w,v) for w in [-3,3] for v in range(-3,4)] +\
@@ -738,71 +620,61 @@ class Dune_dynamics:
                             self.ammophila.new [x+a,y+b] += 1
                     
         self.ammophila.Density+=self.ammophila.new
-
-            
-    def Submerging (self):
+        
+    def Submerging(self):
         '''In winter, marram grass is submerged'''
         #trace netto change in sand deposition or erosion per cell during autumn and winter
         self.sand.change_sand_winter+= self.sand.change_sand
         #updating density of marram grass based on level of submerging during winter
-        #print('Density', self.ammophila.Density)
         #h1: height before submerging
         h1=(np.sqrt(self.ammophila.Density/100))*self.ammophila.max_height
-        ##print('h1', h1)
-        #h2[h1>0] efficienter maar werkte niet, kijken hoe dit komt
+        
+        #h3: presence/abscence marram grass
         h3=np.zeros((self.max_x, self.max_y))
         #submersion only occurs where ammophila is present h3: 1: ammophila present, 0: no ammophila present
         h3[h1>0]=1
+        
         #h2: height after submerging
-        h2= np.where(self.sand.change_sand>0, (h1-(self.sand.change_sand/(self.sand.sand_bd*(self.length_cell**2))))*h3, h1)    
-        #print('h2', h2)        
+        h2=np.where(self.sand.change_sand>0, (h1-(self.sand.change_sand/(self.sand.sand_bd*(self.length_cell**2))))*h3, h1)    
         # plant completely submerged=> height becomes 0
         h2[h2<0]=0
+        
         #calculate new local densities based on h2
-        #self.ammophila.Density=((h2/self.ammophila.max_height)**2)*100
-        #print('Density', self.ammophila.Density)
+        # self.ammophila.Density=((h2/self.ammophila.max_height)**2)*100
 
 #start of simulation
-
-##♣open data for pandas
+## open data for pandas
 data={"P":[], "H":[], "Replicate":[], "Time":[],
-                  "Max_hoogte_zand":[],
-                  "Tot_density_marram":[],
-                  "Cumulative_outflux_per_year":[],
-                  "Total_dune_volume":[]}
+      "Max_dune_height":[], "Tot_density_marram":[],
+      "Cumulative_outflux_per_year":[], "Total_dune_volume":[]}
 
 
-for rep in range(1,6):
+for rep in range(1,3):
     
-        
         for SpatCor in range(0,11):
-            Hirsh=SpatCor/10
+            Hirsh= SpatCor/10
                        
             for PropMarram in range(1,10):
-                Prop=PropMarram/10
-     
-            
-                print("P=",Prop," H=",Hirsh," Repnr",rep)
+                Prop= PropMarram/10
+                
+                print("P=", Prop, ", H=", Hirsh, ", Repnr=", rep)
                 Dune_dynamics(
                     max_x= 100, #number of cells
                     max_y= 100, #number of cells
-                    sandflux= 0.2,#relative percentage of qmax
-                    dist_winds=[0.7,0.15,0.15,0], #distribution of wind directions[north, west, south, east]
+                    sandflux= 0.2, #relative percentage of qmax
+                    dist_winds= [0.7,0.15,0.15,0], # [0.7,0.15,0.15,0], #distribution of wind directions[north, west, south, east]
                     #average wind strenght and its standard deviation per month, first month April, last month March 
                     #first day of a simulation is April 1st (first day of marram growth in spring)
-                    mean_wind_velocity=[5.59, 5.35, 6.83, 5.31, 5.77, 6.21, 6.29, 5.80, 7.56, 8.29, 7.71, 6.23],#m/s
+                    mean_wind_velocity=[5.59, 5.35, 6.83, 5.31, 5.77, 6.21, 6.29, 5.80, 7.56, 8.29, 7.71, 6.23], #m/s
                     deviation_wind_velocity=[3.33, 2.74, 2.42, 2.59, 2.95, 3.07, 3.58, 2.79, 4.02, 4.75, 3.21, 3.41],
                     max_height=0.90, #m [Huiskes 1979]
-                    sand_bulk_density= 1500,#kg/m^3
+                    sand_bulk_density= 1500, #kg/m^3
                     length_cell=0.2, #length of one cell #m
-                    P=Prop,#Percentage of marram grass in landscape at initialization
+                    P=Prop, #percentage of marram grass in landscape at initialization
                     H=Hirsh, #spatial correlation, Hirsh factir at initialization
                     n=rep, #for having replicates in the loop
-                    stormtime=0.9,  #relative time when storm should appear - 0.9 is last two years
-                    storm=False,  #storm at timesteps*stormtime
-                    rain=False,
-                    timesteps=20*365+1,#total runtime
-                    output_name='_P10_100x100_per_rep_all',
-                    movie=False) 
-
-
+                    stormtime=0.9, #relative time when storm should appear - 0.9 is last two years
+                    storm=False, #storm at timesteps*stormtime
+                    rain=False, #rainfall at the start of the growth season in the second half of the simulation period
+                    timesteps=20*365+1, #total runtime
+                    output_name='_DuneDevelopment_100x100') 
